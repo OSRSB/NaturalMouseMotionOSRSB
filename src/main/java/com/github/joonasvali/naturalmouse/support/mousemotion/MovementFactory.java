@@ -98,6 +98,74 @@ public class MovementFactory {
     return movements;
   }
 
+  public Movement offsetMovement(Movement movement, Point currentMousePosition, int xDest, int yDest) {
+    if (movement == null) {
+      return null;
+    }
+    //log.warn("Old Movement: " + movement);
+
+    int deltaX = xDest - movement.destX;
+    int deltaY = yDest - movement.destY;
+
+    int lastMousePositionX = currentMousePosition.x;
+    int lastMousePositionY = currentMousePosition.y;
+
+    int xDistance = movement.xDistance + deltaX;
+    int yDistance = movement.yDistance + deltaY;
+
+    double initialDistance = Math.hypot(xDistance, yDistance);
+
+    Movement retMovement = new Movement(xDest, yDest, initialDistance, xDistance, yDistance, movement.time, movement.flow);
+
+    //log.warn("New Movement: " + retMovement);
+
+    return retMovement;
+
+/*
+    {
+      int currentDestinationX = limitByScreenWidth(xDest + overshoot.x);
+      int currentDestinationY = limitByScreenHeight(yDest + overshoot.y);
+      xDistance = currentDestinationX - lastMousePositionX;
+      yDistance = currentDestinationY - lastMousePositionY;
+      double distance = Math.hypot(xDistance, yDistance);
+      flow = speedManager.getFlowWithTime(distance).x;
+      movements.add(
+              new Movement(currentDestinationX, currentDestinationY, distance, xDistance, yDistance, mouseMovementMs, flow)
+      );
+      lastMousePositionX = currentDestinationX;
+      lastMousePositionY = currentDestinationY;
+      // Apply for the next overshoot if exists.
+      mouseMovementMs = overshootManager.deriveNextMouseMovementTimeMs(mouseMovementMs, i - 1);
+    }
+
+    for (Iterator iter = movement.iterator(); iter.hasNext(); ) {
+      Movement move = (Movement) iter.next();
+
+      move.destX = limitByScreenWidth(move.destX + deltaX);
+      move.destY = limitByScreenHeight(move.destY + deltaY);
+
+      int xDistance = move.destX - lastMousePositionX;
+      int yDistance = move.destY - lastMousePositionY;
+      double distance = Math.hypot(xDistance, yDistance);
+      Flow flow = speedManager.getFlowWithTime(distance).x;
+      long mouseMovementMs = overshootManager.deriveNextMouseMovementTimeMs(mouseMovementMs, );
+
+
+      move.distance = distance;
+      move.xDistance += xDistance;
+      move.yDistance += yDistance;
+
+      move.flow = flow;
+      move.time = mouseMovementMs;
+
+      lastMousePositionX = move.destX;
+      lastMousePositionY = move.destY;
+    }
+
+    return movement;
+    */
+  }
+
   private int limitByScreenWidth(int value) {
     return Math.max(0, Math.min(screenSize.width - 1, value));
   }

@@ -6,6 +6,7 @@ import com.github.joonasvali.naturalmouse.support.MouseMotionNature;
 import com.github.joonasvali.naturalmouse.support.mousemotion.Movement;
 import com.github.joonasvali.naturalmouse.support.mousemotion.MovementFactory;
 import com.github.joonasvali.naturalmouse.util.MathUtil;
+import com.github.joonasvali.naturalmouse.util.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -32,8 +33,8 @@ public class MouseMotion {
   private final NoiseProvider noiseProvider;
   private final SpeedManager speedManager;
   private final OvershootManager overshootManager;
-  private final int xDest;
-  private final int yDest;
+  private int xDest;
+  private int yDest;
   private final Random random;
   private final MouseInfoAccessor mouseInfo;
   private Point mousePosition;
@@ -69,6 +70,7 @@ public class MouseMotion {
    */
   public void move() throws InterruptedException {
     move((x, y) -> {
+    return null;
     });
   }
 
@@ -106,6 +108,8 @@ public class MouseMotion {
       Flow flow = movement.flow;
       double xDistance = movement.xDistance;
       double yDistance = movement.yDistance;
+      double xRelativeDistance = movement.xDistance;
+      double yRelativeDistance = movement.yDistance;
       log.debug("Movement arc length computed to {} and time predicted to {} ms", distance, mouseMovementMs);
 
       /* Number of steps is calculated from the movement time and limited by minimal amount of steps
@@ -118,6 +122,8 @@ public class MouseMotion {
       updateMouseInfo();
       double simulatedMouseX = mousePosition.x;
       double simulatedMouseY = mousePosition.y;
+      int mousePosX = mousePosition.x;
+      int mousePosY = mousePosition.y;
 
       double deviationMultiplierX = (random.nextDouble() - 0.5) * 2;
       double deviationMultiplierY = (random.nextDouble() - 0.5) * 2;
@@ -128,6 +134,27 @@ public class MouseMotion {
       double noiseY = 0;
 
       for (int i = 0; i < steps; i++) {
+
+        // Allow other action to take place or just observe, we'll later compensate by sleeping less.
+        Pair<Integer, Integer> newCoords = observer.observe(mousePosX, mousePosY);
+        if (newCoords != null) {
+          movement = movementFactory.offsetMovement(movement, new Point(mousePosX, mousePosY), newCoords.x, newCoords.y);
+          xDest = newCoords.x;
+          yDest = newCoords.y;
+        }
+
+        long endTime = startTime + stepTime * (i + 1);
+        long timeLeft = endTime - systemCalls.currentTimeMillis();
+        sleepAround(Math.max(timeLeft, 0), 0);
+
+        // distance completed plus the distance to new destination
+        distance = movement.distance;
+        xRelativeDistance = movement.destX - mousePosX;
+        yRelativeDistance = movement.destY - mousePosY;
+
+        flow.renormalizeBuckets(i);
+
+
         // All steps take equal amount of time. This is a value from 0...1 describing how far along the process is.
         double timeCompletion = i / (double) steps;
 
@@ -136,8 +163,8 @@ public class MouseMotion {
         // This is here so noise and deviation wouldn't add offset to mouse final position, when we need accuracy.
         double effectFadeMultiplier = (effectFadeSteps - effectFadeStep) / effectFadeSteps;
 
-        double xStepSize = flow.getStepSize(xDistance, steps, timeCompletion);
-        double yStepSize = flow.getStepSize(yDistance, steps, timeCompletion);
+        double xStepSize = flow.getStepSizeRelative(xDistance, xRelativeDistance, steps, timeCompletion);
+        double yStepSize = flow.getStepSizeRelative(yDistance, yRelativeDistance, steps, timeCompletion);
 
         completedXDistance += xStepSize;
         completedYDistance += yStepSize;
@@ -156,15 +183,14 @@ public class MouseMotion {
         log.trace("EffectFadeMultiplier: {}", effectFadeMultiplier);
         log.trace("SimulatedMouse: [{}, {}]", simulatedMouseX, simulatedMouseY);
 
-        long endTime = startTime + stepTime * (i + 1);
-        int mousePosX = MathUtil.roundTowards(
+        mousePosX = MathUtil.roundTowards(
             simulatedMouseX +
             deviation.getX() * deviationMultiplierX * effectFadeMultiplier +
             noiseX * effectFadeMultiplier,
             movement.destX
         );
 
-        int mousePosY = MathUtil.roundTowards(
+        mousePosY = MathUtil.roundTowards(
             simulatedMouseY +
             deviation.getY() * deviationMultiplierY * effectFadeMultiplier +
             noiseY * effectFadeMultiplier,
@@ -179,23 +205,23 @@ public class MouseMotion {
             mousePosY
         );
 
-        // Allow other action to take place or just observe, we'll later compensate by sleeping less.
-        observer.observe(mousePosX, mousePosY);
-
-        long timeLeft = endTime - systemCalls.currentTimeMillis();
-        sleepAround(Math.max(timeLeft, 0), 0);
+        if (mousePosX == xDest && mousePosY == yDest) {
+          break;
+        }
       }
       updateMouseInfo();
 
-      if (mousePosition.x != movement.destX || mousePosition.y != movement.destY) {
-        // It's possible that mouse is manually moved or for some other reason.
-        // Let's start next step from pre-calculated location to prevent errors from accumulating.
-        // But print warning as this is not expected behavior.
-        log.warn("Mouse off from step endpoint (adjustment was done) " +
-            "x: (" + mousePosition.x + " -> " + movement.destX + ") " +
-            "y: (" + mousePosition.y + " -> " + movement.destY + ") "
-        );
-        systemCalls.setMousePosition(movement.destX, movement.destY);
+      if (mousePosX != xDest || mousePosY != yDest) {
+        if (Math.hypot(mousePosX - xDest, mousePosY - yDest) > Math.max(3, 2 * Math.hypot(xDistance, yDistance) / steps)) {
+          // It's possible that mouse is manually moved or for some other reason.
+          // Let's start next step from pre-calculated location to prevent errors from accumulating.
+          // But print warning as this is not expected behavior.
+          log.warn("Mouse off from step endpoint (adjustment was done) " +
+                  "x: (" + mousePosX + " -> " + xDest + ") " +
+                  "y: (" + mousePosY + " -> " + yDest + ") "
+          );
+        }
+        systemCalls.setMousePosition(xDest, yDest);
         // Let's wait a bit before getting mouse info.
         sleepAround(SLEEP_AFTER_ADJUSTMENT_MS, 0);
         updateMouseInfo();

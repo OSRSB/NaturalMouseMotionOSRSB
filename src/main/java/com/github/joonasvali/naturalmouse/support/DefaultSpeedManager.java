@@ -11,7 +11,9 @@ import java.util.List;
 public class DefaultSpeedManager implements SpeedManager {
   private static final double SMALL_DELTA = 10e-6;
   private final List<Flow> flows = new ArrayList<>();
-  private long mouseMovementTimeMs = 500;
+  private long mouseMovementBaseTimeMs = 100;
+  private long mouseMovementScaledTimeMs = 500;
+  private long mouseMovementScaledDistance = 200;
 
   public DefaultSpeedManager(Collection<Flow> flows) {
     this.flows.addAll(flows);
@@ -33,7 +35,9 @@ public class DefaultSpeedManager implements SpeedManager {
 
   @Override
   public Pair<Flow, Long> getFlowWithTime(double distance) {
-    double time = mouseMovementTimeMs + (long)(Math.random() * mouseMovementTimeMs);
+    double fittsTime = mouseMovementBaseTimeMs + mouseMovementScaledTimeMs * Math.log(Math.E * (distance / (double) mouseMovementScaledDistance));
+    double time = fittsTime + (long)(Math.random() * fittsTime);
+    //double time = mouseMovementTimeMs + (long)(Math.random() * mouseMovementTimeMs);
     Flow flow = flows.get((int) (Math.random() * flows.size()));
 
     // Let's ignore waiting time, e.g 0's in flow, by increasing the total time
@@ -48,7 +52,13 @@ public class DefaultSpeedManager implements SpeedManager {
     return new Pair<>(flow, (long)time);
   }
 
-  public void setMouseMovementBaseTimeMs(long mouseMovementSpeedMs) {
-    this.mouseMovementTimeMs = mouseMovementSpeedMs;
+  public void setMouseMovementBaseTimeMs(long mouseMovementBaseTimeMs) {
+    this.mouseMovementBaseTimeMs = mouseMovementBaseTimeMs;
+  }
+  public void setMouseMovementScaledTimeMs(long mouseMovementScaledTimeMs) {
+    this.mouseMovementScaledTimeMs = mouseMovementScaledTimeMs;
+  }
+  public void setMouseMovementScaledDistance(long mouseMovementScaledDistance) {
+    this.mouseMovementScaledDistance = mouseMovementScaledDistance;
   }
 }

@@ -1,11 +1,19 @@
 package com.github.joonasvali.naturalmouse.support;
 
+import com.github.joonasvali.naturalmouse.api.MouseMotion;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.util.Arrays;
+
 /**
  * Flow for the mouse movement
  * Flow defines how slow or fast the cursor is moving at a particular moment, defining the characteristics
  * of movement itself not the trajectory, but how jagged or smooth, accelerating or decelerating, the movement is.
  */
 public class Flow {
+  private static final Logger log = LoggerFactory.getLogger(Flow.class);
+
   private static final int AVERAGE_BUCKET_VALUE = 100;
 
   private final double[] buckets;
@@ -58,6 +66,21 @@ public class Flow {
     return buckets;
   }
 
+  public void renormalizeBuckets(int step) {
+    long sum = 0;
+    for (int i = step; i < buckets.length; i++) {
+      if (buckets[i] < 0) {
+        throw new IllegalArgumentException("Invalid Bucket at [" + i + "] : " + buckets[i]);
+      }
+      sum += buckets[i];
+    }
+
+    double multiplier = (double) AVERAGE_BUCKET_VALUE * buckets.length / sum;
+    for (int i = step; i < buckets.length; i++) {
+      buckets[i] = buckets[i] * multiplier;
+    }
+  }
+
   public double[] getFlowCharacteristics() {
     return buckets;
   }
@@ -85,6 +108,37 @@ public class Flow {
     // the cursor needs to travel 0.4 pixels, so for a bucket containing 50, the mouse
     // travelling distance is 0.4 * 50 = 20pixels
     double distancePerBucketContent = distance / (buckets.length * AVERAGE_BUCKET_VALUE);
+
+    return bucketContents * distancePerBucketContent;
+  }
+
+  /**
+   * This returns step size for a single axis.
+   *
+   * @param relativeDistance the relative distance current movement has on current axis from current position to target in pixels
+   * @param steps number of steps the current movement involves
+   * @param completion value between 0 and 1, the value describes movement completion in time
+   * @return the step size which should be taken next
+   */
+  public double getStepSizeRelative(double distance, double relativeDistance, int steps, double completion) {
+    // This is essentially how big is a single completion step,
+    // so we can expect next 'completion' is current completion + completionStep
+    double completionStep = 1d / steps;
+    // Define the first bucket we read from
+    double bucketFrom = (completion * buckets.length);
+    // Define the last bucket we read from
+    double bucketUntil = ((completion + completionStep) * buckets.length);
+
+    double bucketContents = getBucketsContents(bucketFrom, bucketUntil);
+    // This shows how much distance is assigned to single contents value in the buckets.
+    // For example if this gets assigned to 0.4, then for every value in the bucket
+    // the cursor needs to travel 0.4 pixels, so for a bucket containing 50, the mouse
+    // travelling distance is 0.4 * 50 = 20pixels
+    double distancePerBucketContent = relativeDistance / ((buckets.length - (int) bucketFrom) * AVERAGE_BUCKET_VALUE);
+
+    if (Math.abs(relativeDistance) < 10) {
+      return relativeDistance;
+    }
 
     return bucketContents * distancePerBucketContent;
   }

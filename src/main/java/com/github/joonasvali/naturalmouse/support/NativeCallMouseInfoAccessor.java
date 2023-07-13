@@ -1,7 +1,6 @@
 package com.github.joonasvali.naturalmouse.support;
 
 import com.github.joonasvali.naturalmouse.api.MouseInfoAccessor;
-import sun.awt.SunToolkit;
 
 import java.awt.*;
 import java.awt.peer.MouseInfoPeer;
@@ -25,7 +24,7 @@ public class NativeCallMouseInfoAccessor implements MouseInfoAccessor {
     Toolkit toolkit = Toolkit.getDefaultToolkit();
     MouseInfoPeer mp;
     try {
-      Method method = SunToolkit.class.getDeclaredMethod("getMouseInfoPeer");
+      Method method = MouseInfoPeer.class.getDeclaredMethod("getMouseInfoPeer");
       method.setAccessible(true);
       mp = (MouseInfoPeer) method.invoke(toolkit);
     } catch (Exception e) {
