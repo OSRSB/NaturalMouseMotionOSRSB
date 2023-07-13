@@ -87,6 +87,9 @@ public class MouseMotion {
     MovementFactory movementFactory = new MovementFactory(xDest, yDest, speedManager, overshootManager, screenSize);
     ArrayDeque<Movement> movements = movementFactory.createMovements(mousePosition);
     int overshoots = movements.size() - 1;
+
+    int sumXDelta = 0;
+    int sumYDelta = 0;
     while (mousePosition.x != xDest || mousePosition.y != yDest) {
       if (movements.isEmpty()) {
         // This shouldn't usually happen, but it's possible that somehow we won't end up on the target,
@@ -94,7 +97,11 @@ public class MouseMotion {
         // to wrong pixel)
         updateMouseInfo();
         log.warn("Re-populating movement array. Did not end up on target pixel.");
+        movementFactory = new MovementFactory(xDest, yDest, speedManager, overshootManager, screenSize);
         movements = movementFactory.createMovements(mousePosition);
+        overshoots = movements.size() - 1;
+        sumXDelta = 0;
+        sumYDelta = 0;
       }
 
       Movement movement = movements.removeFirst();
@@ -133,12 +140,16 @@ public class MouseMotion {
       double noiseX = 0;
       double noiseY = 0;
 
+      movement = movementFactory.offsetMovement(movement, new Point(mousePosX, mousePosY), sumXDelta, sumYDelta);
       for (int i = 0; i < steps; i++) {
-
         // Allow other action to take place or just observe, we'll later compensate by sleeping less.
         Pair<Integer, Integer> newCoords = observer.observe(mousePosX, mousePosY);
         if (newCoords != null) {
-          movement = movementFactory.offsetMovement(movement, new Point(mousePosX, mousePosY), newCoords.x, newCoords.y);
+          int xDelta = newCoords.x - xDest;
+          int yDelta = newCoords.y - yDest;
+          movement = movementFactory.offsetMovement(movement, new Point(mousePosX, mousePosY), xDelta, yDelta);
+          sumXDelta += xDelta;
+          sumYDelta += yDelta;
           xDest = newCoords.x;
           yDest = newCoords.y;
         }
@@ -153,7 +164,6 @@ public class MouseMotion {
         yRelativeDistance = movement.destY - mousePosY;
 
         flow.renormalizeBuckets(i);
-
 
         // All steps take equal amount of time. This is a value from 0...1 describing how far along the process is.
         double timeCompletion = i / (double) steps;
@@ -205,23 +215,24 @@ public class MouseMotion {
             mousePosY
         );
 
-        if (mousePosX == xDest && mousePosY == yDest) {
+        if (mousePosX == movement.destX && mousePosY == yDest) {
           break;
         }
       }
       updateMouseInfo();
 
-      if (mousePosX != xDest || mousePosY != yDest) {
-        if (Math.hypot(mousePosX - xDest, mousePosY - yDest) > Math.max(3, 2 * Math.hypot(xDistance, yDistance) / steps)) {
+      if (mousePosX != movement.destX || mousePosY != movement.destY) {
+        String mouseHopMessage = "Mouse off from step endpoint (adjustment was done) " +
+                "x: (" + mousePosX + " -> " + movement.destX + ") " +
+                "y: (" + mousePosY + " -> " + movement.destY + ") ";
+        if (Math.hypot(mousePosX - movement.destX, mousePosY - movement.destY) > Math.max(3, 2 * Math.hypot(xDistance, yDistance) / steps)) {
           // It's possible that mouse is manually moved or for some other reason.
           // Let's start next step from pre-calculated location to prevent errors from accumulating.
           // But print warning as this is not expected behavior.
-          log.warn("Mouse off from step endpoint (adjustment was done) " +
-                  "x: (" + mousePosX + " -> " + xDest + ") " +
-                  "y: (" + mousePosY + " -> " + yDest + ") "
-          );
+          log.warn(mouseHopMessage);
         }
-        systemCalls.setMousePosition(xDest, yDest);
+        log.debug(mouseHopMessage);
+        systemCalls.setMousePosition(movement.destX, movement.destY);
         // Let's wait a bit before getting mouse info.
         sleepAround(SLEEP_AFTER_ADJUSTMENT_MS, 0);
         updateMouseInfo();
