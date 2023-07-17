@@ -136,7 +136,7 @@ public class Flow {
     // travelling distance is 0.4 * 50 = 20pixels
     double distancePerBucketContent = relativeDistance / ((buckets.length - (int) bucketFrom) * AVERAGE_BUCKET_VALUE);
 
-    if (bucketContents * distancePerBucketContent > Math.abs(relativeDistance)) {
+    if (Math.abs(bucketContents * distancePerBucketContent) > Math.abs(relativeDistance)) {
       return relativeDistance;
     }
 
