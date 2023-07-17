@@ -11,9 +11,9 @@ import java.util.List;
 public class DefaultSpeedManager implements SpeedManager {
   private static final double SMALL_DELTA = 10e-6;
   private final List<Flow> flows = new ArrayList<>();
-  private long mouseMovementBaseTimeMs = 100;
-  private long mouseMovementScaledTimeMs = 500;
-  private long mouseMovementScaledDistance = 200;
+  private long mouseMovementBaseTimeMs = 300;
+  private long mouseMovementScaledTimeMs = 800;
+  private long mouseMovementScaledDistance = 300;
 
   public DefaultSpeedManager(Collection<Flow> flows) {
     this.flows.addAll(flows);
@@ -35,7 +35,7 @@ public class DefaultSpeedManager implements SpeedManager {
 
   @Override
   public Pair<Flow, Long> getFlowWithTime(double distance) {
-    double fittsTime = mouseMovementBaseTimeMs + mouseMovementScaledTimeMs * Math.log(Math.E * (distance / (double) mouseMovementScaledDistance));
+    double fittsTime = mouseMovementBaseTimeMs + mouseMovementScaledTimeMs * Math.log(1 + Math.E * (distance / (double) mouseMovementScaledDistance));
     double time = fittsTime + (long)(Math.random() * fittsTime);
     //double time = mouseMovementTimeMs + (long)(Math.random() * mouseMovementTimeMs);
     Flow flow = flows.get((int) (Math.random() * flows.size()));

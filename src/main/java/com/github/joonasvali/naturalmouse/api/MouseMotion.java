@@ -173,8 +173,8 @@ public class MouseMotion {
         // This is here so noise and deviation wouldn't add offset to mouse final position, when we need accuracy.
         double effectFadeMultiplier = (effectFadeSteps - effectFadeStep) / effectFadeSteps;
 
-        double xStepSize = flow.getStepSizeRelative(xDistance, xRelativeDistance, steps, timeCompletion);
-        double yStepSize = flow.getStepSizeRelative(yDistance, yRelativeDistance, steps, timeCompletion);
+        double xStepSize = flow.getStepSizeRelative(xRelativeDistance, steps, timeCompletion);
+        double yStepSize = flow.getStepSizeRelative(yRelativeDistance, steps, timeCompletion);
 
         completedXDistance += xStepSize;
         completedYDistance += yStepSize;
@@ -216,6 +216,9 @@ public class MouseMotion {
         );
 
         if (mousePosX == movement.destX && mousePosY == yDest) {
+          if (timeLeft > timeToStepsDivider) {
+            log.info("Mouse reached destination faster than expected by {} ms.", timeLeft - timeToStepsDivider);
+          }
           break;
         }
       }

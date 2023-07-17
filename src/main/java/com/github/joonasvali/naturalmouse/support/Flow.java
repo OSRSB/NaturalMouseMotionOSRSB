@@ -120,7 +120,7 @@ public class Flow {
    * @param completion value between 0 and 1, the value describes movement completion in time
    * @return the step size which should be taken next
    */
-  public double getStepSizeRelative(double distance, double relativeDistance, int steps, double completion) {
+  public double getStepSizeRelative(double relativeDistance, int steps, double completion) {
     // This is essentially how big is a single completion step,
     // so we can expect next 'completion' is current completion + completionStep
     double completionStep = 1d / steps;
@@ -136,7 +136,7 @@ public class Flow {
     // travelling distance is 0.4 * 50 = 20pixels
     double distancePerBucketContent = relativeDistance / ((buckets.length - (int) bucketFrom) * AVERAGE_BUCKET_VALUE);
 
-    if (Math.abs(relativeDistance) < 10) {
+    if (bucketContents * distancePerBucketContent > Math.abs(relativeDistance)) {
       return relativeDistance;
     }
 
