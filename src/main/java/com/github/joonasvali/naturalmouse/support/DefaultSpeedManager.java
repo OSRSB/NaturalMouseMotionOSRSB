@@ -38,7 +38,7 @@ public class DefaultSpeedManager implements SpeedManager {
     double fittsTime = mouseMovementBaseTimeMs + mouseMovementScaledTimeMs * Math.log(1 + Math.E * (distance / (double) mouseMovementScaledDistance));
     double time = fittsTime + (long)(Math.random() * fittsTime);
     //double time = mouseMovementTimeMs + (long)(Math.random() * mouseMovementTimeMs);
-    Flow flow = flows.get((int) (Math.random() * flows.size()));
+    Flow flow = new Flow(flows.get((int) (Math.random() * flows.size())).getFlowCharacteristics());
 
     // Let's ignore waiting time, e.g 0's in flow, by increasing the total time
     // by the amount of 0's there are in the flow multiplied by the time each bucket represents.
