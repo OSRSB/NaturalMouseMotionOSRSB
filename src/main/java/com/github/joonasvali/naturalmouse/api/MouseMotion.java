@@ -153,8 +153,8 @@ public class MouseMotion {
             sumYDelta += yDelta;
             xDest = newCoords.x;
             yDest = newCoords.y;
-            flow.renormalizeBuckets(i);
           }
+          flow.renormalizeBuckets(i);
         }
 
         long endTime = startTime + stepTime * (i + 1);
