@@ -143,15 +143,18 @@ public class MouseMotion {
       movement = movementFactory.offsetMovement(movement, new Point(mousePosX, mousePosY), sumXDelta, sumYDelta);
       for (int i = 0; i < steps; i++) {
         // Allow other action to take place or just observe, we'll later compensate by sleeping less.
-        Pair<Integer, Integer> newCoords = observer.observe(mousePosX, mousePosY);
-        if (newCoords != null) {
-          int xDelta = newCoords.x - xDest;
-          int yDelta = newCoords.y - yDest;
-          movement = movementFactory.offsetMovement(movement, new Point(mousePosX, mousePosY), xDelta, yDelta);
-          sumXDelta += xDelta;
-          sumYDelta += yDelta;
-          xDest = newCoords.x;
-          yDest = newCoords.y;
+        if (observer != null) {
+          Pair<Integer, Integer> newCoords = observer.observe(mousePosX, mousePosY);
+          if (newCoords != null) {
+            int xDelta = newCoords.x - xDest;
+            int yDelta = newCoords.y - yDest;
+            movement = movementFactory.offsetMovement(movement, new Point(mousePosX, mousePosY), xDelta, yDelta);
+            sumXDelta += xDelta;
+            sumYDelta += yDelta;
+            xDest = newCoords.x;
+            yDest = newCoords.y;
+            flow.renormalizeBuckets(i);
+          }
         }
 
         long endTime = startTime + stepTime * (i + 1);
@@ -163,8 +166,6 @@ public class MouseMotion {
         xRelativeDistance = movement.destX - mousePosX;
         yRelativeDistance = movement.destY - mousePosY;
 
-        flow.renormalizeBuckets(i);
-
         // All steps take equal amount of time. This is a value from 0...1 describing how far along the process is.
         double timeCompletion = i / (double) steps;
 
@@ -173,8 +174,17 @@ public class MouseMotion {
         // This is here so noise and deviation wouldn't add offset to mouse final position, when we need accuracy.
         double effectFadeMultiplier = (effectFadeSteps - effectFadeStep) / effectFadeSteps;
 
-        double xStepSize = flow.getStepSizeRelative(xRelativeDistance, steps, timeCompletion);
-        double yStepSize = flow.getStepSizeRelative(yRelativeDistance, steps, timeCompletion);
+        double xStepSize;
+        double yStepSize;
+
+        if (observer != null ) {
+          xStepSize = flow.getStepSizeRelative(xRelativeDistance, steps, timeCompletion);
+          yStepSize = flow.getStepSizeRelative(yRelativeDistance, steps, timeCompletion);
+        }
+        else {
+          xStepSize = flow.getStepSize(xDistance, steps, timeCompletion);
+          yStepSize = flow.getStepSize(yDistance, steps, timeCompletion);
+        }
 
         completedXDistance += xStepSize;
         completedYDistance += yStepSize;
