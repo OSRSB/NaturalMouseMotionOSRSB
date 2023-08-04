@@ -12,7 +12,7 @@ public class DefaultSpeedManager implements SpeedManager {
   private static final double SMALL_DELTA = 10e-6;
   private final List<Flow> flows = new ArrayList<>();
   private long mouseMovementBaseTimeMs = 300;
-  private long mouseMovementScaledTimeMs = 800;
+  private long mouseMovementScaledTimeMs = 500;
   private long mouseMovementScaledDistance = 300;
 
   public DefaultSpeedManager(Collection<Flow> flows) {
